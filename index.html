@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetFlow — Network Troubleshooting Flowchart Builder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700;900&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #7bed9f;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --node-start: #0d2b1f;
+    --node-start-border: #00ff88;
+    --node-end: #2d0a0a;
+    --node-end-border: #ff4444;
+    --node-decision: #1a1a00;
+    --node-decision-border: #ffdd00;
+    --node-instruction: #0a1a2d;
+    --node-instruction-border: #00aaff;
+    --node-image: #1a0d2d;
+    --node-image-border: #cc44ff;
+    --conn-color: #00d4ff;
+    --grid-color: rgba(0,212,255,0.04);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Exo 2', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 22px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px rgba(0,212,255,0.5);
+    flex-shrink: 0;
+  }
+  .logo span { color: var(--accent2); }
+
+  .toolbar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+
+  .tool-group {
+    display: flex;
+    gap: 4px;
+    padding: 0 8px;
+    border-right: 1px solid var(--border);
+  }
+  .tool-group:last-child { border-right: none; }
+
+  .tool-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    align-self: center;
+    margin-right: 2px;
+  }
+
+  button {
+    font-family: 'Exo 2', sans-serif;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  button:hover { background: var(--border); border-color: var(--accent); color: var(--accent); }
+  button.active { background: rgba(0,212,255,0.15); border-color: var(--accent); color: var(--accent); }
+
+  .btn-node-start { border-left: 3px solid var(--node-start-border); }
+  .btn-node-end { border-left: 3px solid var(--node-end-border); }
+  .btn-node-decision { border-left: 3px solid var(--node-decision-border); }
+  .btn-node-instruction { border-left: 3px solid var(--node-instruction-border); }
+  .btn-node-image { border-left: 3px solid var(--node-image-border); }
+
+  .btn-accent { border-color: var(--accent2); color: var(--accent2); }
+  .btn-accent:hover { background: rgba(255,107,53,0.15); }
+  .btn-danger { border-color: #ff4444; color: #ff4444; }
+  .btn-danger:hover { background: rgba(255,68,68,0.15); }
+  .btn-success { border-color: var(--accent3); color: var(--accent3); }
+  .btn-success:hover { background: rgba(123,237,159,0.15); }
+
+  /* ── MAIN LAYOUT ── */
+  .workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-title {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .node-template {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .node-template:hover { transform: translateX(3px); border-color: var(--accent); }
+
+  .nt-start { border-left: 3px solid var(--node-start-border); background: var(--node-start); }
+  .nt-end { border-left: 3px solid var(--node-end-border); background: var(--node-end); }
+  .nt-decision { border-left: 3px solid var(--node-decision-border); background: var(--node-decision); }
+  .nt-instruction { border-left: 3px solid var(--node-instruction-border); background: var(--node-instruction); }
+  .nt-image { border-left: 3px solid var(--node-image-border); background: var(--node-image); }
+
+  .nt-icon { font-size: 16px; }
+
+  .props-panel { padding: 12px; }
+  .props-panel label { display: block; font-size: 10px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; }
+  .props-panel label:first-child { margin-top: 0; }
+  .props-panel input, .props-panel textarea, .props-panel select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 8px;
+    font-size: 12px;
+    font-family: 'Exo 2', sans-serif;
+    border-radius: 4px;
+    outline: none;
+  }
+  .props-panel input:focus, .props-panel textarea:focus { border-color: var(--accent); }
+  .props-panel textarea { resize: vertical; min-height: 60px; }
+
+  .no-selection {
+    color: var(--text-dim);
+    font-size: 12px;
+    text-align: center;
+    padding: 20px 10px;
+    font-style: italic;
+  }
+
+  /* ── CANVAS AREA ── */
+  .canvas-wrapper {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: var(--bg);
+  }
+
+  canvas#grid-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+  }
+
+  #flowchart-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    cursor: default;
+  }
+
+  .canvas-info {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    pointer-events: none;
+  }
+
+  .zoom-controls {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    display: flex;
+    gap: 4px;
+  }
+  .zoom-controls button { padding: 6px 10px; font-size: 14px; }
+
+  /* ── MODALS ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.hidden { display: none; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 24px;
+    min-width: 400px;
+    max-width: 600px;
+    width: 90%;
+  }
+
+  .modal h2 {
+    font-size: 16px;
+    color: var(--accent);
+    margin-bottom: 16px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+
+  /* ── LIGHTBOX ── */
+  .lightbox-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--node-image-border);
+    border-radius: 8px;
+    width: 90vw;
+    max-width: 1000px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(204,68,255,0.3);
+  }
+
+  .lightbox-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .lightbox-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    color: var(--node-image-border);
+    letter-spacing: 1px;
+  }
+
+  .lightbox-body {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: #050810;
+  }
+
+  .lightbox-body img {
+    max-width: 100%;
+    max-height: calc(90vh - 80px);
+    object-fit: contain;
+    border-radius: 4px;
+    display: block;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.6);
+  }
+
+  /* ── TOOLTIPS ── */
+  .hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    font-style: italic;
+  }
+
+  #conn-mode-indicator {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,107,53,0.2);
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    font-size: 12px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-family: 'Share Tech Mono', monospace;
+    display: none;
+    pointer-events: none;
+  }
+  #conn-mode-indicator.visible { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="logo">Net<span>Flow</span></div>
+
+  <div class="toolbar">
+    <div class="tool-group">
+      <span class="tool-label">File</span>
+      <button onclick="newDiagram()" title="New diagram">⬜ New</button>
+      <button onclick="saveJSON()" class="btn-success" title="Save as JSON">💾 Save</button>
+      <button onclick="loadJSON()" title="Load JSON file">📂 Load</button>
+    </div>
+    <div class="tool-group">
+      <span class="tool-label">Export</span>
+      <button onclick="exportHTML()" class="btn-accent" title="Export standalone HTML">🌐 HTML</button>
+      <button onclick="exportPNG()" title="Export as image">🖼 PNG</button>
+    </div>
+    <div class="tool-group">
+      <span class="tool-label">Edit</span>
+      <button onclick="deleteSelected()" class="btn-danger" title="Delete selected (Del)">🗑 Delete</button>
+      <button onclick="clearAll()" class="btn-danger" title="Clear canvas">✖ Clear</button>
+    </div>
+    <div class="tool-group">
+      <span class="tool-label">Connect</span>
+      <button id="conn-mode-btn" onclick="toggleConnectMode()" title="Toggle connection mode (C)">🔗 Connect Mode</button>
+    </div>
+  </div>
+</header>
+
+<!-- ── WORKSPACE ── -->
+<div class="workspace">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">➕ Add Nodes</div>
+      <div class="node-template nt-start" onclick="addNode('start')">
+        <span class="nt-icon">▶</span> Start
+      </div>
+      <div class="node-template nt-instruction" onclick="addNode('instruction')">
+        <span class="nt-icon">▭</span> Instruction
+      </div>
+      <div class="node-template nt-decision" onclick="addNode('decision')">
+        <span class="nt-icon">◇</span> Decision
+      </div>
+      <div class="node-template nt-image" onclick="addNode('image')">
+        <span class="nt-icon">🖼</span> Image
+      </div>
+      <div class="node-template nt-end" onclick="addNode('end')">
+        <span class="nt-icon">⏹</span> Stop
+      </div>
+      <p class="hint">Click to add at center, then drag to position.</p>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">🔗 Connecting Nodes</div>
+      <p style="font-size:11px;color:var(--text-dim);line-height:1.7;">
+        Press <strong style="color:var(--accent)">C</strong> or click <strong style="color:var(--accent)">Connect Mode</strong> in the toolbar, then <strong style="color:var(--accent)">drag</strong> from one node to another.<br><br>
+        Click a connection line to <strong style="color:var(--accent)">select it</strong> and add a label. Press <strong style="color:var(--accent)">Esc</strong> to cancel.
+      </p>
+    </div>
+
+    <div class="sidebar-section" style="flex:1;">
+      <div class="sidebar-title">✏️ Properties</div>
+      <div id="props-area">
+        <div class="no-selection">Select a node to edit its properties.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-wrapper" id="canvas-wrapper">
+    <canvas id="grid-canvas"></canvas>
+    <canvas id="flowchart-canvas"></canvas>
+    <div id="conn-mode-indicator">🔗 CONNECT MODE — drag from a node to another • Esc to cancel</div>
+    <div class="canvas-info" id="canvas-info">Zoom: 100% | Nodes: 0 | Connections: 0</div>
+    <div class="zoom-controls">
+      <button onclick="zoom(-0.1)">−</button>
+      <button onclick="zoom(0)" title="Reset zoom">⌂</button>
+      <button onclick="zoom(0.1)">+</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE UPLOAD MODAL -->
+<div class="modal-overlay hidden" id="image-modal">
+  <div class="modal">
+    <h2>🖼 ATTACH IMAGE</h2>
+    <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--text-dim);">Upload an image file or paste a URL</label>
+    <input type="file" id="img-file-input" accept="image/*" style="margin-bottom:12px;color:var(--text);">
+    <label style="display:block;margin-bottom:4px;font-size:12px;color:var(--text-dim);">— or — Image URL</label>
+    <input type="text" id="img-url-input" placeholder="https://example.com/image.png" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:4px;">
+    <div class="modal-actions">
+      <button onclick="closeModal('image-modal')">Cancel</button>
+      <button class="btn-success" onclick="applyImage()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX MODAL -->
+<div class="modal-overlay hidden" id="lightbox-modal" onclick="closeLightboxOnBackdrop(event)">
+  <div class="lightbox-container">
+    <div class="lightbox-header">
+      <span id="lightbox-title" class="lightbox-title"></span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-accent" onclick="openImageModal(lightboxNode)" title="Change image">✏️ Edit</button>
+        <button onclick="closeModal('lightbox-modal')" title="Close (Esc)">✖ Close</button>
+      </div>
+    </div>
+    <div class="lightbox-body">
+      <img id="lightbox-img" src="" alt="Node image">
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay hidden" id="confirm-modal">
+  <div class="modal">
+    <h2>⚠️ CONFIRM</h2>
+    <p id="confirm-text" style="color:var(--text-dim);font-size:13px;"></p>
+    <div class="modal-actions">
+      <button onclick="closeModal('confirm-modal')">Cancel</button>
+      <button class="btn-danger" id="confirm-ok-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="json-file-input" accept=".json" style="display:none">
+
+<script>
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let nodes = [];
+let connections = [];
+let selectedNode = null;
+let selectedConn = null;
+let nextId = 1;
+let zoomLevel = 1;
+let panX = 0, panY = 0;
+let connectMode = false;
+let connectSource = null;
+let connectDragPos = null;
+
+// Drag state
+let draggingNode = null;
+let dragOffX = 0, dragOffY = 0;
+
+// Connection drag
+let connDragging = false;
+let connDragStart = null; // {nodeId, x, y}
+
+// Pan drag
+let panDragging = false;
+let panStartX = 0, panStartY = 0;
+let panStartPanX = 0, panStartPanY = 0;
+
+const canvas = document.getElementById('flowchart-canvas');
+const ctx = canvas.getContext('2d');
+const gridCanvas = document.getElementById('grid-canvas');
+const gridCtx = gridCanvas.getContext('2d');
+const wrapper = document.getElementById('canvas-wrapper');
+
+// ════════════════════════════════════════════════════════
+//  NODE CONFIG
+// ════════════════════════════════════════════════════════
+const NODE_CFG = {
+  start:       { w: 160, h: 60,  label: 'START',           shape: 'stadium',   bg: '#0d2b1f', border: '#00ff88', textColor: '#00ff88' },
+  end:         { w: 160, h: 60,  label: 'STOP',            shape: 'stadium',   bg: '#2d0a0a', border: '#ff4444', textColor: '#ff4444' },
+  instruction: { w: 200, h: 70,  label: 'Check the cable', shape: 'rect',      bg: '#0a1a2d', border: '#00aaff', textColor: '#e2e8f0' },
+  decision:    { w: 200, h: 80,  label: 'Is it plugged in?',shape: 'diamond',  bg: '#1a1a00', border: '#ffdd00', textColor: '#ffdd00' },
+  image:       { w: 180, h: 160, label: 'Screenshot',       shape: 'image',    bg: '#1a0d2d', border: '#cc44ff', textColor: '#e2e8f0' },
+};
+
+// ════════════════════════════════════════════════════════
+//  RESIZE
+// ════════════════════════════════════════════════════════
+function resizeCanvases() {
+  const r = wrapper.getBoundingClientRect();
+  [canvas, gridCanvas].forEach(c => {
+    c.width = r.width;
+    c.height = r.height;
+  });
+  drawGrid();
+  render();
+}
+window.addEventListener('resize', resizeCanvases);
+
+// ════════════════════════════════════════════════════════
+//  GRID
+// ════════════════════════════════════════════════════════
+function drawGrid() {
+  const w = gridCanvas.width, h = gridCanvas.height;
+  gridCtx.clearRect(0, 0, w, h);
+  const spacing = 30 * zoomLevel;
+  const ox = ((panX % spacing) + spacing) % spacing;
+  const oy = ((panY % spacing) + spacing) % spacing;
+  gridCtx.strokeStyle = 'rgba(0,212,255,0.04)';
+  gridCtx.lineWidth = 1;
+  for (let x = ox; x < w; x += spacing) {
+    gridCtx.beginPath(); gridCtx.moveTo(x, 0); gridCtx.lineTo(x, h); gridCtx.stroke();
+  }
+  for (let y = oy; y < h; y += spacing) {
+    gridCtx.beginPath(); gridCtx.moveTo(0, y); gridCtx.lineTo(w, y); gridCtx.stroke();
+  }
+  // Dot at major intersections
+  const majorSpacing = spacing * 5;
+  const mox = ((panX % majorSpacing) + majorSpacing) % majorSpacing;
+  const moy = ((panY % majorSpacing) + majorSpacing) % majorSpacing;
+  gridCtx.fillStyle = 'rgba(0,212,255,0.12)';
+  for (let x = mox; x < w; x += majorSpacing) {
+    for (let y = moy; y < h; y += majorSpacing) {
+      gridCtx.beginPath(); gridCtx.arc(x, y, 1.5, 0, Math.PI*2); gridCtx.fill();
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  COORD TRANSFORMS
+// ════════════════════════════════════════════════════════
+function worldToScreen(wx, wy) {
+  return { x: wx * zoomLevel + panX, y: wy * zoomLevel + panY };
+}
+function screenToWorld(sx, sy) {
+  return { x: (sx - panX) / zoomLevel, y: (sy - panY) / zoomLevel };
+}
+
+// ════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════
+function render() {
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.save();
+  ctx.translate(panX, panY);
+  ctx.scale(zoomLevel, zoomLevel);
+
+  // Draw connections
+  connections.forEach(conn => drawConnection(conn));
+
+  // In-progress connection
+  if (connDragging && connDragStart && connectDragPos) {
+    const src = nodes.find(n => n.id === connDragStart.nodeId);
+    if (src) {
+      const sp = getNodeCenter(src);
+      ctx.strokeStyle = '#ff6b35';
+      ctx.lineWidth = 2 / zoomLevel;
+      ctx.setLineDash([6/zoomLevel, 3/zoomLevel]);
+      ctx.beginPath();
+      ctx.moveTo(sp.x, sp.y);
+      ctx.lineTo(connectDragPos.x, connectDragPos.y); // already world coords
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Draw a small circle at the drag tip
+      ctx.beginPath();
+      ctx.arc(connectDragPos.x, connectDragPos.y, 5/zoomLevel, 0, Math.PI*2);
+      ctx.fillStyle = '#ff6b35';
+      ctx.fill();
+    }
+  }
+
+  // Draw nodes
+  nodes.forEach(n => drawNode(n));
+
+  ctx.restore();
+
+  // Update info
+  document.getElementById('canvas-info').textContent =
+    `Zoom: ${Math.round(zoomLevel*100)}%  |  Nodes: ${nodes.length}  |  Connections: ${connections.length}`;
+}
+
+// ════════════════════════════════════════════════════════
+//  NODE DRAWING
+// ════════════════════════════════════════════════════════
+function nodeDims(n) {
+  const cfg = NODE_CFG[n.type];
+  return { w: n.w || cfg.w, h: n.h || cfg.h };
+}
+
+function getNodeCenter(n) {
+  const { w, h } = nodeDims(n);
+  return { x: n.x + w/2, y: n.y + h/2 };
+}
+
+function drawNode(n) {
+  const cfg = NODE_CFG[n.type];
+  const { w, h } = nodeDims(n);
+  const x = n.x, y = n.y;
+  const isSelected = selectedNode && selectedNode.id === n.id;
+
+  ctx.save();
+
+  // Shadow/glow for selected
+  if (isSelected) {
+    ctx.shadowColor = cfg.border;
+    ctx.shadowBlur = 20;
+  }
+
+  if (n.type === 'image') {
+    drawImageNode(n, cfg, isSelected);
+  } else if (cfg.shape === 'stadium') {
+    drawStadium(n, cfg, isSelected);
+  } else if (cfg.shape === 'diamond') {
+    drawDiamond(n, cfg, isSelected);
+  } else {
+    drawRect(n, cfg, isSelected);
+  }
+
+  ctx.shadowBlur = 0;
+
+  // Selected outline
+  if (isSelected) {
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5 / zoomLevel;
+    ctx.setLineDash([4/zoomLevel, 3/zoomLevel]);
+    ctx.strokeRect(x - 4, y - 4, w + 8, h + 8);
+    ctx.setLineDash([]);
+  }
+
+  ctx.restore();
+
+  // Draw connection port dots
+  if (isSelected || connectMode) {
+    drawPorts(n, cfg);
+  }
+}
+
+function drawStadium(n, cfg, sel) {
+  const { w, h } = nodeDims(n);
+  const r = h / 2;
+  ctx.beginPath();
+  ctx.moveTo(n.x + r, n.y);
+  ctx.lineTo(n.x + w - r, n.y);
+  ctx.arc(n.x + w - r, n.y + h/2, r, -Math.PI/2, Math.PI/2);
+  ctx.lineTo(n.x + r, n.y + h);
+  ctx.arc(n.x + r, n.y + h/2, r, Math.PI/2, -Math.PI/2);
+  ctx.closePath();
+  ctx.fillStyle = cfg.bg;
+  ctx.fill();
+  ctx.strokeStyle = cfg.border;
+  ctx.lineWidth = 2 / zoomLevel;
+  ctx.stroke();
+  drawNodeLabel(n, cfg, n.x + w/2, n.y + h/2);
+}
+
+function drawRect(n, cfg, sel) {
+  const { w, h } = nodeDims(n);
+  const r = 6;
+  ctx.beginPath();
+  ctx.moveTo(n.x + r, n.y);
+  ctx.lineTo(n.x + w - r, n.y);
+  ctx.arcTo(n.x + w, n.y, n.x + w, n.y + r, r);
+  ctx.lineTo(n.x + w, n.y + h - r);
+  ctx.arcTo(n.x + w, n.y + h, n.x + w - r, n.y + h, r);
+  ctx.lineTo(n.x + r, n.y + h);
+  ctx.arcTo(n.x, n.y + h, n.x, n.y + h - r, r);
+  ctx.lineTo(n.x, n.y + r);
+  ctx.arcTo(n.x, n.y, n.x + r, n.y, r);
+  ctx.closePath();
+  ctx.fillStyle = cfg.bg;
+  ctx.fill();
+  ctx.strokeStyle = cfg.border;
+  ctx.lineWidth = 2 / zoomLevel;
+  ctx.stroke();
+  drawNodeLabel(n, cfg, n.x + w/2, n.y + h/2);
+}
+
+function drawDiamond(n, cfg, sel) {
+  const { w, h } = nodeDims(n);
+  const cx = n.x + w/2, cy = n.y + h/2;
+  ctx.beginPath();
+  ctx.moveTo(cx, n.y);
+  ctx.lineTo(n.x + w, cy);
+  ctx.lineTo(cx, n.y + h);
+  ctx.lineTo(n.x, cy);
+  ctx.closePath();
+  ctx.fillStyle = cfg.bg;
+  ctx.fill();
+  ctx.strokeStyle = cfg.border;
+  ctx.lineWidth = 2 / zoomLevel;
+  ctx.stroke();
+  drawNodeLabel(n, cfg, cx, cy);
+
+  // YES / NO labels on diamond
+  const fSize = Math.max(9, 11 / zoomLevel);
+  ctx.font = `bold ${fSize}px 'Exo 2'`;
+  ctx.fillStyle = '#7bed9f';
+  ctx.textAlign = 'left';
+  ctx.fillText(n.yesLabel || 'YES', n.x + w + 5, cy + 4);
+  ctx.fillStyle = '#ff6b6b';
+  ctx.textAlign = 'center';
+  ctx.fillText(n.noLabel || 'NO', cx, n.y + h + 14);
+}
+
+function drawImageNode(n, cfg, sel) {
+  const { w, h } = nodeDims(n);
+  const r = 6;
+  // Outer frame
+  ctx.beginPath();
+  ctx.roundRect(n.x, n.y, w, h, r);
+  ctx.fillStyle = cfg.bg;
+  ctx.fill();
+  ctx.strokeStyle = cfg.border;
+  ctx.lineWidth = 2 / zoomLevel;
+  ctx.stroke();
+
+  if (n.imageData) {
+    if (!n._img) {
+      const img = new Image();
+      img.onload = () => { n._img = img; render(); };
+      img.src = n.imageData;
+    } else {
+      const padding = 8;
+      const imgH = h - 28;
+      ctx.drawImage(n._img, n.x + padding, n.y + padding, w - padding*2, imgH);
+    }
+  } else {
+    // Placeholder
+    ctx.fillStyle = 'rgba(204,68,255,0.1)';
+    ctx.fillRect(n.x + 8, n.y + 8, w - 16, h - 36);
+    const fs = Math.max(10, 12/zoomLevel);
+    ctx.font = `${fs}px 'Share Tech Mono'`;
+    ctx.fillStyle = 'rgba(204,68,255,0.5)';
+    ctx.textAlign = 'center';
+    ctx.fillText('[ click to add image ]', n.x + w/2, n.y + h/2 - 8);
+  }
+
+  // Label bar at bottom
+  const labelY = n.y + h - 22;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(n.x, labelY, w, 22);
+  const fs2 = Math.max(9, 10/zoomLevel);
+  ctx.font = `600 ${fs2}px 'Exo 2'`;
+  ctx.fillStyle = '#e2e8f0';
+  ctx.textAlign = 'center';
+  const txt = n.label || 'Image';
+  ctx.fillText(txt.length > 22 ? txt.slice(0,22)+'…' : txt, n.x + w/2, n.y + h - 8);
+}
+
+function drawNodeLabel(n, cfg, cx, cy) {
+  const { w: lw, h: lh } = nodeDims(n); const maxW = lw - 16;
+  const fSize = Math.max(10, 13 / zoomLevel);
+  ctx.font = `600 ${fSize}px 'Exo 2'`;
+  ctx.fillStyle = cfg.textColor;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const txt = n.label || cfg.label;
+  // Word wrap
+  const words = txt.split(' ');
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? line + ' ' + word : word;
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  const lineH = fSize * 1.3;
+  const startY = cy - (lines.length - 1) * lineH / 2;
+  lines.forEach((l, i) => ctx.fillText(l, cx, startY + i * lineH));
+}
+
+function drawPorts(n, cfg) {
+  const ports = getPortPositions(n, cfg);
+  ports.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 5/zoomLevel, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,212,255,0.8)';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1/zoomLevel;
+    ctx.stroke();
+  });
+}
+
+function getPortPositions(n, cfg) {
+  const { w, h } = nodeDims(n);
+  const cx = n.x + w/2, cy = n.y + h/2;
+  if (cfg.shape === 'diamond') {
+    return [
+      { x: cx, y: n.y },
+      { x: n.x + w, y: cy },
+      { x: cx, y: n.y + h },
+      { x: n.x, y: cy },
+    ];
+  }
+  return [
+    { x: cx, y: n.y },
+    { x: n.x + w, y: cy },
+    { x: cx, y: n.y + h },
+    { x: n.x, y: cy },
+  ];
+}
+
+// ════════════════════════════════════════════════════════
+//  CONNECTION DRAWING
+// ════════════════════════════════════════════════════════
+function drawConnection(conn) {
+  const src = nodes.find(n => n.id === conn.from);
+  const dst = nodes.find(n => n.id === conn.to);
+  if (!src || !dst) return;
+
+  const sp = getExitPoint(src, dst);
+  const ep = getEntryPoint(dst, src);
+
+  const isSelected = selectedConn === conn;
+  ctx.strokeStyle = isSelected ? '#ff6b35' : '#00d4ff';
+  ctx.lineWidth = (isSelected ? 2.5 : 2) / zoomLevel;
+  ctx.setLineDash([]);
+
+  // Bezier
+  const dx = ep.x - sp.x, dy = ep.y - sp.y;
+  const cx1 = sp.x + dx * 0.5, cy1 = sp.y;
+  const cx2 = ep.x - dx * 0.5, cy2 = ep.y;
+
+  ctx.beginPath();
+  ctx.moveTo(sp.x, sp.y);
+  ctx.bezierCurveTo(cx1, cy1, cx2, cy2, ep.x, ep.y);
+  ctx.stroke();
+
+  // Arrowhead
+  drawArrow(ep.x, ep.y, cx2, cy2, isSelected ? '#ff6b35' : '#00d4ff');
+
+  // Label
+  if (conn.label) {
+    const mx = (sp.x + ep.x) / 2, my = (sp.y + ep.y) / 2 - 12;
+    const fs = Math.max(9, 11/zoomLevel);
+    ctx.font = `bold ${fs}px 'Exo 2'`;
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    const tw = ctx.measureText(conn.label).width;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(mx - tw/2 - 4, my - fs, tw + 8, fs + 4);
+    ctx.fillStyle = isSelected ? '#ff6b35' : '#00d4ff';
+    ctx.fillText(conn.label, mx, my);
+  }
+}
+
+function drawArrow(x, y, fromX, fromY, color) {
+  const angle = Math.atan2(y - fromY, x - fromX);
+  const size = 10 / zoomLevel;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - size * Math.cos(angle - 0.4), y - size * Math.sin(angle - 0.4));
+  ctx.lineTo(x - size * Math.cos(angle + 0.4), y - size * Math.sin(angle + 0.4));
+  ctx.closePath();
+  ctx.fill();
+}
+
+function getExitPoint(src, dst) {
+  const sc = getNodeCenter(src), dc = getNodeCenter(dst);
+  return getBestPort(src, nodeDims(src), sc, dc);
+}
+function getEntryPoint(dst, src) {
+  const sc = getNodeCenter(src), dc = getNodeCenter(dst);
+  return getBestPort(dst, nodeDims(dst), dc, sc);
+}
+
+function getBestPort(n, cfg, ownCenter, targetCenter) {
+  const ports = getPortPositions(n, cfg);
+  let best = ports[0], bestDist = Infinity;
+  ports.forEach(p => {
+    const d = Math.hypot(p.x - targetCenter.x, p.y - targetCenter.y);
+    if (d < bestDist) { bestDist = d; best = p; }
+  });
+  return best;
+}
+
+// ════════════════════════════════════════════════════════
+//  HIT TESTING
+// ════════════════════════════════════════════════════════
+function hitTestNode(wx, wy) {
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const n = nodes[i];
+    const cfg = NODE_CFG[n.type];
+    const { w, h } = nodeDims(n);
+    if (cfg.shape === 'diamond') {
+      const cx = n.x + w/2, cy = n.y + h/2;
+      const dx = Math.abs(wx - cx) / (w/2);
+      const dy = Math.abs(wy - cy) / (h/2);
+      if (dx + dy <= 1) return n;
+    } else {
+      if (wx >= n.x && wx <= n.x + w && wy >= n.y && wy <= n.y + h) return n;
+    }
+  }
+  return null;
+}
+
+function hitTestPort(wx, wy) {
+  const threshold = 12 / zoomLevelLevel;
+  for (const n of nodes) {
+    const ports = getPortPositions(n, nodeDims(n));
+    for (const p of ports) {
+      if (Math.hypot(wx - p.x, wy - p.y) < threshold) return { node: n, port: p };
+    }
+  }
+  return null;
+}
+
+// ════════════════════════════════════════════════════════
+//  MOUSE EVENTS
+// ════════════════════════════════════════════════════════
+let lastMousePos = { x: 0, y: 0 };
+
+canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const w = screenToWorld(sx, sy);
+  lastMousePos = { x: sx, y: sy };
+
+  if (connectMode) {
+    const nodeHit = hitTestNode(w.x, w.y);
+    if (nodeHit) {
+      connDragging = true;
+      connDragStart = { nodeId: nodeHit.id };
+      connectDragPos = { x: w.x, y: w.y }; // store world coords
+    }
+    return;
+  }
+
+  const nodeHit = hitTestNode(w.x, w.y);
+  if (nodeHit) {
+    selectNode(nodeHit);
+    draggingNode = nodeHit;
+    dragOffX = w.x - nodeHit.x;
+    dragOffY = w.y - nodeHit.y;
+    // Move to top
+    nodes.splice(nodes.indexOf(nodeHit), 1);
+    nodes.push(nodeHit);
+    // Double click: if image has data, show lightbox; otherwise open upload
+    if (e.detail === 2 && nodeHit.type === 'image') {
+      if (nodeHit.imageData) {
+        openLightbox(nodeHit);
+      } else {
+        openImageModal(nodeHit);
+      }
+    }
+    return;
+  }
+
+  // Check connection hit
+  const connHit = hitTestConnection(w.x, w.y);
+  if (connHit) {
+    selectedConn = connHit;
+    selectedNode = null;
+    updateProps();
+    render();
+    return;
+  }
+
+  // Deselect
+  selectedNode = null;
+  selectedConn = null;
+  updateProps();
+
+  // Pan
+  panDragging = true;
+  panStartX = sx; panStartY = sy;
+  panStartPanX = panX; panStartPanY = panY;
+  render();
+});
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const w = screenToWorld(sx, sy);
+
+  if (connDragging) {
+    connectDragPos = { x: w.x, y: w.y }; // world coords
+    render();
+    return;
+  }
+
+  if (draggingNode) {
+    draggingNode.x = w.x - dragOffX;
+    draggingNode.y = w.y - dragOffY;
+    render();
+    return;
+  }
+
+  if (panDragging) {
+    panX = panStartPanX + (sx - panStartX);
+    panY = panStartPanY + (sy - panStartY);
+    drawGrid();
+    render();
+    return;
+  }
+
+  // Cursor changes
+  if (connectMode) {
+    canvas.style.cursor = hitTestNode(w.x, w.y) ? 'crosshair' : 'cell';
+  } else {
+    canvas.style.cursor = hitTestNode(w.x, w.y) ? 'grab' : 'default';
+  }
+});
+
+canvas.addEventListener('mouseup', e => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const w = screenToWorld(sx, sy);
+
+  if (connDragging) {
+    connDragging = false;
+    const targetNode = hitTestNode(w.x, w.y);
+    if (targetNode && connDragStart && targetNode.id !== connDragStart.nodeId) {
+      // Check for duplicate
+      const exists = connections.some(c => c.from === connDragStart.nodeId && c.to === targetNode.id);
+      if (!exists) {
+        connections.push({ id: nextId++, from: connDragStart.nodeId, to: targetNode.id, label: '' });
+      }
+    }
+    connDragStart = null;
+    connectDragPos = null;
+    render();
+    return;
+  }
+
+  if (draggingNode) {
+    draggingNode = null;
+    canvas.style.cursor = 'default';
+    return;
+  }
+
+  panDragging = false;
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const delta = e.deltaY > 0 ? -0.1 : 0.1;
+  const newZoom = Math.max(0.2, Math.min(3, zoomLevel + delta));
+  // Zoom toward cursor
+  panX = sx - (sx - panX) * (newZoom / zoomLevel);
+  panY = sy - (sy - panY) * (newZoom / zoomLevel);
+  zoomLevel = newZoom;
+  drawGrid();
+  render();
+}, { passive: false });
+
+function hitTestConnection(wx, wy) {
+  for (const conn of connections) {
+    const src = nodes.find(n => n.id === conn.from);
+    const dst = nodes.find(n => n.id === conn.to);
+    if (!src || !dst) continue;
+    const sp = getExitPoint(src, dst);
+    const ep = getEntryPoint(dst, src);
+    const mx = (sp.x + ep.x) / 2, my = (sp.y + ep.y) / 2;
+    if (Math.hypot(wx - mx, wy - my) < 15 / zoomLevel) return conn;
+  }
+  return null;
+}
+
+// ════════════════════════════════════════════════════════
+//  KEYBOARD
+// ════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+  if (e.key === 'Escape') {
+    if (!document.getElementById('lightbox-modal').classList.contains('hidden')) {
+      closeModal('lightbox-modal');
+      return;
+    }
+    connectMode = false;
+    connDragging = false;
+    connectDragPos = null;
+    updateConnectModeUI();
+    render();
+  }
+  if (e.key === 'c' || e.key === 'C') toggleConnectMode();
+});
+
+// ════════════════════════════════════════════════════════
+//  NODE MANAGEMENT
+// ════════════════════════════════════════════════════════
+function addNode(type) {
+  const cfg = NODE_CFG[type];
+  const w = screenToWorld(canvas.width/2, canvas.height/2);
+  const n = {
+    id: nextId++,
+    type,
+    x: w.x - cfg.w/2 + (Math.random()-0.5)*40,
+    y: w.y - cfg.h/2 + (Math.random()-0.5)*40,
+    w: cfg.w, h: cfg.h,
+    label: cfg.label,
+    yesLabel: 'YES',
+    noLabel: 'NO',
+    imageData: null,
+    _img: null,
+  };
+  nodes.push(n);
+  selectNode(n);
+  render();
+}
+
+function selectNode(n) {
+  selectedNode = n;
+  selectedConn = null;
+  updateProps();
+  render();
+}
+
+function deleteSelected() {
+  if (selectedNode) {
+    connections = connections.filter(c => c.from !== selectedNode.id && c.to !== selectedNode.id);
+    nodes = nodes.filter(n => n.id !== selectedNode.id);
+    selectedNode = null;
+    updateProps();
+    render();
+  } else if (selectedConn) {
+    connections = connections.filter(c => c !== selectedConn);
+    selectedConn = null;
+    render();
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  PROPERTIES PANEL
+// ════════════════════════════════════════════════════════
+function updateProps() {
+  const area = document.getElementById('props-area');
+  if (!selectedNode && !selectedConn) {
+    area.innerHTML = '<div class="no-selection">Select a node to edit its properties.</div>';
+    return;
+  }
+  if (selectedConn) {
+    area.innerHTML = `
+      <div class="props-panel">
+        <label>Connection Label</label>
+        <input type="text" value="${selectedConn.label || ''}" oninput="selectedConn.label=this.value;render()" placeholder="e.g. Yes, No, Success...">
+        <button class="btn-danger" style="margin-top:10px;width:100%" onclick="deleteSelected()">Delete Connection</button>
+      </div>`;
+    return;
+  }
+  const n = selectedNode;
+  const { w: nw, h: nh } = nodeDims(n);
+  let extra = '';
+  if (n.type === 'image') {
+    extra = n.imageData
+      ? `<button style="width:100%;margin-top:8px" onclick="openLightbox(selectedNode)">🔍 View Full Size</button>
+         <button style="width:100%;margin-top:6px" onclick="openImageModal(selectedNode)">📷 Change Image</button>`
+      : `<button style="width:100%;margin-top:8px" onclick="openImageModal(selectedNode)">📷 Add Image</button>`;
+  }
+  area.innerHTML = `<div class="props-panel">
+    <label>Label</label>
+    <textarea oninput="selectedNode.label=this.value;render()">${n.label || ''}</textarea>
+    <div style="margin-top:10px;">
+      <label style="margin-bottom:4px;display:block;">Size</label>
+      <div style="margin-bottom:4px;">
+        <div style="font-size:10px;color:#64748b;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px;">Width: <span style="color:#e2e8f0">${nw}px</span></div>
+        <input type="range" min="80" max="500" value="${nw}" style="width:100%;accent-color:var(--accent1);"
+          oninput="selectedNode.w=+this.value;render();updateProps()">
+      </div>
+      <div style="margin-bottom:6px;">
+        <div style="font-size:10px;color:#64748b;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px;">Height: <span style="color:#e2e8f0">${nh}px</span></div>
+        <input type="range" min="40" max="400" value="${nh}" style="width:100%;accent-color:var(--accent1);"
+          oninput="selectedNode.h=+this.value;render();updateProps()">
+      </div>
+      <button style="width:100%;font-size:11px;padding:4px;background:rgba(100,116,139,0.2);border:1px solid #334155;color:#94a3b8;border-radius:4px;cursor:pointer;"
+        onclick="selectedNode.w=null;selectedNode.h=null;render();updateProps()">&#8635; Reset to default size</button>
+    </div>
+    ${extra}
+    <button class="btn-danger" style="margin-top:10px;width:100%" onclick="deleteSelected()">Delete Node</button>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════
+//  CONNECT MODE
+// ════════════════════════════════════════════════════════
+function toggleConnectMode() {
+  connectMode = !connectMode;
+  connDragging = false;
+  updateConnectModeUI();
+  render();
+}
+
+function updateConnectModeUI() {
+  const btn = document.getElementById('conn-mode-btn');
+  const ind = document.getElementById('conn-mode-indicator');
+  if (connectMode) {
+    btn.classList.add('active');
+    ind.classList.add('visible');
+  } else {
+    btn.classList.remove('active');
+    ind.classList.remove('visible');
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  ZOOM
+// ════════════════════════════════════════════════════════
+function zoom(delta) {
+  if (delta === 0) {
+    // Reset
+    zoomLevel = 1; panX = 0; panY = 0;
+  } else {
+    const newZoom = Math.max(0.2, Math.min(3, zoomLevel + delta));
+    const cx = canvas.width/2, cy = canvas.height/2;
+    panX = cx - (cx - panX) * (newZoom / zoomLevel);
+    panY = cy - (cy - panY) * (newZoom / zoomLevel);
+    zoomLevel = newZoom;
+  }
+  drawGrid();
+  render();
+}
+
+// ════════════════════════════════════════════════════════
+//  IMAGE MODAL
+// ════════════════════════════════════════════════════════
+let imageTargetNode = null;
+let lightboxNode = null;
+
+function openLightbox(n) {
+  lightboxNode = n;
+  document.getElementById('lightbox-img').src = n.imageData;
+  document.getElementById('lightbox-title').textContent = '🖼  ' + (n.label || 'Image');
+  showModal('lightbox-modal');
+}
+
+function closeLightboxOnBackdrop(e) {
+  if (e.target.id === 'lightbox-modal') closeModal('lightbox-modal');
+}
+function openImageModal(n) {
+  imageTargetNode = n;
+  document.getElementById('img-file-input').value = '';
+  document.getElementById('img-url-input').value = n.imageData && n.imageData.startsWith('http') ? n.imageData : '';
+  showModal('image-modal');
+}
+
+function applyImage() {
+  const fileInput = document.getElementById('img-file-input');
+  const urlInput = document.getElementById('img-url-input').value.trim();
+  if (!imageTargetNode) return;
+
+  if (fileInput.files.length > 0) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      imageTargetNode.imageData = e.target.result;
+      imageTargetNode._img = null;
+      closeModal('image-modal');
+      render();
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+  } else if (urlInput) {
+    imageTargetNode.imageData = urlInput;
+    imageTargetNode._img = null;
+    closeModal('image-modal');
+    render();
+  } else {
+    closeModal('image-modal');
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  SAVE / LOAD
+// ════════════════════════════════════════════════════════
+function saveJSON() {
+  const data = {
+    version: 1,
+    nodes: nodes.map(n => ({ ...n, _img: undefined })),
+    connections,
+    nextId,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'flowchart.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+
+function loadJSON() {
+  document.getElementById('json-file-input').click();
+}
+
+document.getElementById('json-file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      nodes = (data.nodes || []).map(n => ({ ...n, _img: null }));
+      connections = data.connections || [];
+      nextId = data.nextId || (nodes.length + connections.length + 1);
+      selectedNode = null; selectedConn = null;
+      updateProps();
+      render();
+    } catch { alert('Invalid JSON file.'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// ════════════════════════════════════════════════════════
+//  EXPORT HTML  (fully interactive)
+// ════════════════════════════════════════════════════════
+function exportHTML() {
+  if (nodes.length === 0) { alert('No nodes to export.'); return; }
+
+  const padding = 60;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodes.forEach(n => {
+    const { w, h } = nodeDims(n);
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + w);
+    maxY = Math.max(maxY, n.y + h);
+  });
+  const canvasW = maxX - minX + padding * 2;
+  const canvasH = maxY - minY + padding * 2;
+  const ox = -minX + padding; // world-to-export offset
+  const oy = -minY + padding;
+
+  // ── Build SVG arrows & connections ──
+  function getBestPortExport(n, targetCenter) {
+    const { w: nw, h: nh } = nodeDims(n);
+    const nx = n.x + ox, ny = n.y + oy;
+    const cx = nx + nw/2, cy = ny + nh/2;
+    const ports = [
+      { x: cx,      y: ny,      dir: 'top'    },
+      { x: nx + nw, y: cy,      dir: 'right'  },
+      { x: cx,      y: ny + nh, dir: 'bottom' },
+      { x: nx,      y: cy,      dir: 'left'   },
+    ];
+    let best = ports[0], bestD = Infinity;
+    ports.forEach(p => {
+      const d = Math.hypot(p.x - targetCenter.x, p.y - targetCenter.y);
+      if (d < bestD) { bestD = d; best = p; }
+    });
+    return best;
+  }
+
+  let svgArrows = '';
+  connections.forEach(conn => {
+    const src = nodes.find(n => n.id === conn.from);
+    const dst = nodes.find(n => n.id === conn.to);
+    if (!src || !dst) return;
+    const sdims = nodeDims(src), ddims = nodeDims(dst);
+    const sc = { x: src.x + sdims.w/2 + ox, y: src.y + sdims.h/2 + oy };
+    const dc = { x: dst.x + ddims.w/2 + ox, y: dst.y + ddims.h/2 + oy };
+    const sp = getBestPortExport(src, dc);
+    const ep = getBestPortExport(dst, sc);
+
+    // Build bezier control points based on exit/entry directions
+    const ddx = ep.x - sp.x, ddy = ep.y - sp.y;
+    const bend = Math.max(Math.abs(ddx), Math.abs(ddy)) * 0.5;
+    let c1x = sp.x, c1y = sp.y, c2x = ep.x, c2y = ep.y;
+    if (sp.dir === 'right')  { c1x = sp.x + bend; c1y = sp.y; }
+    if (sp.dir === 'left')   { c1x = sp.x - bend; c1y = sp.y; }
+    if (sp.dir === 'bottom') { c1x = sp.x; c1y = sp.y + bend; }
+    if (sp.dir === 'top')    { c1x = sp.x; c1y = sp.y - bend; }
+    if (ep.dir === 'right')  { c2x = ep.x + bend; c2y = ep.y; }
+    if (ep.dir === 'left')   { c2x = ep.x - bend; c2y = ep.y; }
+    if (ep.dir === 'bottom') { c2x = ep.x; c2y = ep.y + bend; }
+    if (ep.dir === 'top')    { c2x = ep.x; c2y = ep.y - bend; }
+
+    svgArrows += `<path data-conn="${conn.id}" d="M${sp.x},${sp.y} C${c1x},${c1y} ${c2x},${c2y} ${ep.x},${ep.y}" stroke="#00d4ff" stroke-width="2" fill="none" marker-end="url(#arrow)" class="conn-path"/>`;
+    if (conn.label) {
+      const mx = (sp.x+ep.x)/2, my = (sp.y+ep.y)/2 - 12;
+      const lw = conn.label.length * 7 + 12;
+      svgArrows += `<rect data-conn-label="${conn.id}" x="${mx - lw/2}" y="${my-12}" width="${lw}" height="16" rx="3" fill="rgba(0,0,0,0.75)" class="conn-label-bg"/>`;
+      svgArrows += `<text data-conn-label="${conn.id}" x="${mx}" y="${my}" text-anchor="middle" dominant-baseline="middle" fill="#00d4ff" font-size="11" font-family="Exo 2,sans-serif" font-weight="bold" class="conn-label-text">${conn.label}</text>`;
+    }
+  });
+
+  // ── Build HTML node elements ──
+  const NODE_STYLES = {
+    start:       { bg:'#0d2b1f', border:'#00ff88', color:'#00ff88', radius:'30px' },
+    end:         { bg:'#2d0a0a', border:'#ff4444', color:'#ff4444', radius:'30px' },
+    instruction: { bg:'#0a1a2d', border:'#00aaff', color:'#e2e8f0', radius:'6px' },
+    decision:    { bg:'#1a1a00', border:'#ffdd00', color:'#ffdd00', radius:'0' },
+    image:       { bg:'#1a0d2d', border:'#cc44ff', color:'#e2e8f0', radius:'6px' },
+  };
+
+  let nodeHTML = '';
+  nodes.forEach(n => {
+    const cfg = NODE_CFG[n.type];
+    const s = NODE_STYLES[n.type];
+    const left = n.x + ox, top = n.y + oy;
+    const label = (n.label || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    if (n.type === 'decision') {
+      // Get all outgoing connections from this decision node
+      const outConns = connections.filter(c => c.from === n.id);
+
+      // For each outgoing connection, check which port it exits from
+      // YES = the connection whose target is most to the RIGHT of this node
+      // NO  = the connection whose target is most BELOW (or left) of this node
+      let yesConnId = null, noConnId = null;
+      if (outConns.length >= 1) {
+        // Score each connection by direction: rightward = YES, downward = NO
+        const scored = outConns.map(c => {
+          const dst = nodes.find(x => x.id === c.to);
+          if (!dst) return { c, dx: 0, dy: 0 };
+          const dstDims = nodeDims(dst);
+          const dx = (dst.x + dstDims.w/2) - (n.x + nw/2);
+          const dy = (dst.y + dstDims.h/2) - (n.y + nh/2);
+          return { c, dx, dy };
+        });
+        // The connection going most rightward is YES
+        scored.sort((a, b) => b.dx - a.dx);
+        yesConnId = scored[0].c.id;
+        // The connection going most downward (or least rightward) is NO
+        if (scored.length > 1) {
+          noConnId = scored[scored.length - 1].c.id;
+        }
+      }
+
+      const { w: nw, h: nh } = nodeDims(n);
+      nodeHTML += `
+      <div data-node="${n.id}" style="position:absolute;left:${left}px;top:${top}px;width:${nw}px;height:${nh}px;">
+        <div style="position:absolute;inset:0;background:${s.bg};clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);"></div>
+        <svg style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;">
+          <polygon points="${nw/2},2 ${nw-2},${nh/2} ${nw/2},${nh-2} 2,${nh/2}" fill="none" stroke="${s.border}" stroke-width="2"/>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 24px;font-family:'Exo 2',sans-serif;font-size:12px;font-weight:600;color:${s.color};line-height:1.3;pointer-events:none;">${label}</div>
+        <button class="branch-btn yes-btn" data-from="${n.id}" data-conn="${yesConnId}"
+          onclick="tracePathFromBranch(${n.id}, '${yesConnId}', 'yes', this)"
+          style="position:absolute;left:${nw+4}px;top:50%;transform:translateY(-50%);
+                 background:rgba(123,237,159,0.15);border:1px solid #7bed9f;color:#7bed9f;
+                 font-size:11px;font-weight:bold;font-family:'Exo 2',sans-serif;
+                 padding:2px 8px;border-radius:10px;cursor:pointer;white-space:nowrap;
+                 transition:all 0.2s;">YES ›</button>
+        <button class="branch-btn no-btn" data-from="${n.id}" data-conn="${noConnId}"
+          onclick="tracePathFromBranch(${n.id}, '${noConnId}', 'no', this)"
+          style="position:absolute;left:50%;bottom:-22px;transform:translateX(-50%);
+                 background:rgba(255,107,107,0.15);border:1px solid #ff6b6b;color:#ff6b6b;
+                 font-size:11px;font-weight:bold;font-family:'Exo 2',sans-serif;
+                 padding:2px 8px;border-radius:10px;cursor:pointer;white-space:nowrap;
+                 transition:all 0.2s;">NO ↓</button>
+      </div>`;
+    } else if (n.type === 'image') {
+      const clickable = !!n.imageData;
+      const imgContent = n.imageData
+        ? `<img src="${n.imageData}" style="width:100%;height:${nh-28}px;object-fit:cover;display:block;border-radius:4px 4px 0 0;" alt="${label}">`
+        : `<div style="height:${nh-28}px;display:flex;align-items:center;justify-content:center;color:rgba(204,68,255,0.4);font-size:12px;font-family:'Exo 2',sans-serif;">[no image]</div>`;
+      const onclickAttr = clickable ? 'onclick="openLightbox(\'' + n.id + '\')"' : '';
+      const cursorStyle  = clickable ? 'cursor:zoom-in;' : '';
+      const expandBadge  = clickable ? '<div style="position:absolute;top:4px;right:6px;font-size:10px;background:rgba(204,68,255,0.3);color:#cc44ff;padding:2px 6px;border-radius:10px;font-family:\'Exo 2\',sans-serif;pointer-events:none;">&#x1F50D; expand</div>' : '';
+      nodeHTML += '<div data-node="' + n.id + '" ' + onclickAttr
+        + ' style="position:absolute;left:' + left + 'px;top:' + top + 'px;width:' + nw + 'px;height:' + nh + 'px;'
+        + 'background:' + s.bg + ';border:2px solid ' + s.border + ';border-radius:' + s.radius + ';'
+        + 'overflow:hidden;box-sizing:border-box;' + cursorStyle + '">'
+        + imgContent
+        + '<div style="height:26px;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;'
+        + 'font-family:\'Exo 2\',sans-serif;font-size:11px;font-weight:600;color:' + s.color + ';'
+        + 'padding:0 6px;overflow:hidden;white-space:nowrap;">' + label + '</div>'
+        + expandBadge
+        + '</div>';
+    } else {
+      nodeHTML += `
+      <div data-node="${n.id}" style="position:absolute;left:${left}px;top:${top}px;width:${nw}px;height:${nh}px;background:${s.bg};border:2px solid ${s.border};border-radius:${s.radius};display:flex;align-items:center;justify-content:center;text-align:center;padding:8px 12px;box-sizing:border-box;font-family:'Exo 2',sans-serif;font-size:13px;font-weight:600;color:${s.color};line-height:1.4;">${label}</div>`;
+    }
+  });
+
+  // ── Collect image node data for lightbox ──
+  const imageNodes = nodes
+    .filter(n => n.type === 'image' && n.imageData)
+    .map(n => ({ id: String(n.id), label: n.label || 'Image', imageData: n.imageData }));
+  const imageDataJSON = JSON.stringify(imageNodes);
+
+  // ── Export full graph for path tracing ──
+  const graphNodes = nodes.map(n => ({ id: n.id, type: n.type }));
+  const graphConns = connections.map(c => ({ id: c.id, from: c.from, to: c.to }));
+  const graphJSON  = JSON.stringify({ nodes: graphNodes, connections: graphConns });
+
+  const scriptContent = `
+const IMAGE_NODES = ${imageDataJSON};
+const GRAPH = ${graphJSON};
+
+// Normalise all IDs to strings once at load time
+GRAPH.nodes.forEach(n => n.id = String(n.id));
+GRAPH.connections.forEach(c => { c.id = String(c.id); c.from = String(c.from); c.to = String(c.to); });
+
+let activeDecision = null;
+
+function getReachableFromConn(startConnId) {
+  startConnId = String(startConnId);
+  const reachableNodes = new Set();
+  const reachableConns = new Set();
+  const queue = [startConnId];
+  while (queue.length) {
+    const connId = queue.shift();
+    if (reachableConns.has(connId)) continue;
+    reachableConns.add(connId);
+    const conn = GRAPH.connections.find(c => c.id === connId);
+    if (!conn) continue;
+    if (reachableNodes.has(conn.to)) continue;
+    reachableNodes.add(conn.to);
+    GRAPH.connections.filter(c => c.from === conn.to).forEach(c => queue.push(c.id));
+  }
+  return { reachableNodes, reachableConns };
+}
+
+function tracePathFromBranch(decisionNodeId, connId, branch, btnEl) {
+  connId = String(connId);
+  decisionNodeId = String(decisionNodeId);
+  if (!connId || connId === 'null') return;
+  if (activeDecision && activeDecision.nodeId === decisionNodeId && activeDecision.branch === branch) {
+    resetHighlight(); return;
+  }
+  activeDecision = { nodeId: decisionNodeId, branch };
+
+  // Walk forward from chosen branch
+  const { reachableNodes: chosenNodes, reachableConns: chosenConns } = getReachableFromConn(connId);
+
+  // Find the unchosen branch connection (other outgoing conn from this decision)
+  const otherConns = GRAPH.connections.filter(c => c.from === decisionNodeId && c.id !== connId);
+  let exclusivelyOtherNodes = new Set();
+  let exclusivelyOtherConns = new Set();
+  otherConns.forEach(oc => {
+    const { reachableNodes: otherNodes, reachableConns: otherConnsSet } = getReachableFromConn(oc.id);
+    // Only dim nodes that are on the other branch but NOT on the chosen branch
+    otherNodes.forEach(nid => { if (!chosenNodes.has(nid)) exclusivelyOtherNodes.add(nid); });
+    otherConnsSet.forEach(cid => { if (!chosenConns.has(cid)) exclusivelyOtherConns.add(cid); });
+    // The unchosen connection arrow itself should also dim
+    exclusivelyOtherConns.add(oc.id);
+  });
+
+  // Walk backward from decision to collect upstream nodes/conns (always visible)
+  const upstreamNodes = new Set();
+  const upstreamConns = new Set();
+  const reverseQueue = [decisionNodeId];
+  while (reverseQueue.length) {
+    const nid = reverseQueue.shift();
+    if (upstreamNodes.has(nid)) continue;
+    upstreamNodes.add(nid);
+    GRAPH.connections.filter(c => c.to === nid).forEach(c => {
+      upstreamConns.add(c.id);
+      reverseQueue.push(c.from);
+    });
+  }
+
+  // Dim only nodes/conns that are exclusively on the unchosen path
+  // and not upstream or on the chosen path
+  document.querySelectorAll('[data-node]').forEach(el => {
+    const nid = String(el.getAttribute('data-node'));
+    const dim = exclusivelyOtherNodes.has(nid) && !upstreamNodes.has(nid) && !chosenNodes.has(nid);
+    el.style.transition = 'opacity 0.3s, filter 0.3s';
+    el.style.opacity = dim ? '0.12' : '1';
+    el.style.filter  = dim ? 'grayscale(1)' : 'none';
+  });
+
+  document.querySelectorAll('[data-conn]').forEach(el => {
+    const cid = String(el.getAttribute('data-conn'));
+    const dim = exclusivelyOtherConns.has(cid) && !upstreamConns.has(cid) && !chosenConns.has(cid);
+    el.style.transition = 'opacity 0.3s';
+    el.style.opacity = dim ? '0.08' : '1';
+  });
+  document.querySelectorAll('[data-conn-label]').forEach(el => {
+    const cid = String(el.getAttribute('data-conn-label'));
+    const dim = exclusivelyOtherConns.has(cid) && !upstreamConns.has(cid) && !chosenConns.has(cid);
+    el.style.transition = 'opacity 0.3s';
+    el.style.opacity = dim ? '0.08' : '1';
+  });
+
+  // Decision node always fully visible, style the buttons
+  document.querySelectorAll('[data-node="' + decisionNodeId + '"]').forEach(el => {
+    el.style.opacity = '1';
+    el.style.filter  = 'none';
+  });
+  document.querySelectorAll('.branch-btn[data-from="' + decisionNodeId + '"]').forEach(b => {
+    if (b === btnEl) {
+      b.style.boxShadow = branch === 'yes' ? '0 0 10px rgba(123,237,159,0.7)' : '0 0 10px rgba(255,107,107,0.7)';
+      b.style.transform = b.classList.contains('yes-btn') ? 'translateY(-50%) scale(1.15)' : 'translateX(-50%) scale(1.15)';
+      b.style.opacity   = '1';
+    } else {
+      b.style.opacity   = '0.25';
+      b.style.boxShadow = 'none';
+    }
+  });
+}
+
+function resetHighlight() {
+  activeDecision = null;
+  document.querySelectorAll('[data-node]').forEach(el => { el.style.opacity='1'; el.style.filter='none'; });
+  document.querySelectorAll('[data-conn],[data-conn-label]').forEach(el => { el.style.opacity='1'; });
+  document.querySelectorAll('.branch-btn').forEach(b => {
+    b.style.opacity='1'; b.style.boxShadow='none';
+    b.style.transform = b.classList.contains('yes-btn') ? 'translateY(-50%)' : 'translateX(-50%)';
+  });
+}
+
+document.querySelector('.chart-inner').addEventListener('click', e => {
+  if (!e.target.closest('.branch-btn') && !e.target.closest('[data-node]')) resetHighlight();
+});
+
+function openLightbox(id) {
+  const node = IMAGE_NODES.find(n => n.id === String(id));
+  if (!node) return;
+  document.getElementById('lb-title').textContent = '\uD83D\uDDBC  ' + node.label;
+  document.getElementById('lb-img').src = node.imageData;
+  document.getElementById('lb-overlay').classList.add('open');
+}
+function closeLb() { document.getElementById('lb-overlay').classList.remove('open'); }
+function lbBgClick(e) { if (e.target.id === 'lb-overlay') closeLb(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLb(); resetHighlight(); } });
+`;
+
+  const html = '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
+    + '<meta charset="UTF-8">\n'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
+    + '<title>Network Troubleshooting Flowchart</title>\n'
+    + '<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@400;600;700&display=swap" rel="stylesheet">\n'
+    + '<style>\n'
+    + '*{box-sizing:border-box;margin:0;padding:0}\n'
+    + 'body{background:#0a0e1a;color:#e2e8f0;font-family:\'Exo 2\',sans-serif;min-height:100vh;display:flex;flex-direction:column;}\n'
+    + 'header{background:#111827;border-bottom:1px solid #1e3a5f;padding:16px 24px;text-align:center;flex-shrink:0;}\n'
+    + 'h1{font-family:\'Share Tech Mono\',monospace;font-size:22px;color:#00d4ff;letter-spacing:2px;text-shadow:0 0 20px rgba(0,212,255,0.4);}\n'
+    + 'p.sub{color:#64748b;font-size:12px;margin-top:4px;}\n'
+    + '.scroll-wrap{flex:1;overflow:auto;padding:32px;}\n'
+    + '.chart-outer{margin:0 auto;display:inline-block;min-width:100%;}\n'
+    + '.chart-inner{position:relative;overflow:visible;}\n'
+    + 'footer{color:#1e3a5f;font-size:11px;padding:16px;text-align:center;border-top:1px solid #111827;}\n'
+    + '#lb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(6px);}\n'
+    + '#lb-overlay.open{display:flex;}\n'
+    + '#lb-box{background:#111827;border:1px solid #2d1a40;border-top:3px solid #cc44ff;border-radius:8px;max-width:92vw;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 0 60px rgba(204,68,255,0.25);}\n'
+    + '#lb-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #1e3a5f;flex-shrink:0;}\n'
+    + '#lb-title{font-family:\'Share Tech Mono\',monospace;font-size:13px;color:#cc44ff;letter-spacing:1px;}\n'
+    + '#lb-close{background:#1a2236;border:1px solid #1e3a5f;color:#e2e8f0;padding:5px 12px;border-radius:4px;cursor:pointer;font-family:\'Exo 2\',sans-serif;font-size:12px;}\n'
+    + '#lb-close:hover{border-color:#cc44ff;color:#cc44ff;}\n'
+    + '#lb-body{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:16px;background:#050810;}\n'
+    + '#lb-img{max-width:100%;max-height:calc(92vh - 60px);object-fit:contain;border-radius:4px;box-shadow:0 4px 40px rgba(0,0,0,0.7);}\n'
+    + '</style>\n</head>\n<body>\n'
+    + '<header>\n'
+    + '  <h1>Network Troubleshooting Flowchart</h1>\n'
+    + '  <p class="sub">Generated with NetFlow &nbsp;&middot;&nbsp; Click <strong style="color:#7bed9f">YES</strong> / <strong style="color:#ff6b6b">NO</strong> on any decision to trace that path &nbsp;&middot;&nbsp; Click image nodes to view full size</p>\n'
+    + '</header>\n'
+    + '<div class="scroll-wrap"><div class="chart-outer">'
+    + '<div class="chart-inner" style="width:' + canvasW + 'px;height:' + canvasH + 'px;">\n'
+    + '<svg style="position:absolute;top:0;left:0;width:' + canvasW + 'px;height:' + canvasH + 'px;overflow:visible;pointer-events:none;">'
+    + '<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">'
+    + '<path d="M0,0 L0,6 L8,3 z" fill="#00d4ff"/></marker></defs>'
+    + svgArrows
+    + '</svg>\n'
+    + nodeHTML
+    + '\n</div></div></div>\n'
+    + '<footer>Created with NetFlow &mdash; Cybersecurity Education Tool &nbsp;&middot;&nbsp; Northeast Academy</footer>\n'
+    + '<div id="lb-overlay" onclick="lbBgClick(event)">'
+    + '<div id="lb-box"><div id="lb-header"><span id="lb-title"></span>'
+    + '<button id="lb-close" onclick="closeLb()">&#x2716; Close</button></div>'
+    + '<div id="lb-body"><img id="lb-img" src="" alt=""></div></div></div>\n'
+    + '<script>' + scriptContent + '<\/script>\n'
+    + '</body>\n</html>';
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'network-flowchart.html';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+
+// Helpers for offscreen drawing
+function getExitPointForCtx(oc, src, dst) {
+  return getExitPoint(src, dst);
+}
+function getEntryPointForCtx(oc, dst, src) {
+  return getEntryPoint(dst, src);
+}
+
+function drawArrowOnCtx(oc, x, y, fromX, fromY, color) {
+  const angle = Math.atan2(y - fromY, x - fromX);
+  const size = 10;
+  oc.fillStyle = color;
+  oc.beginPath();
+  oc.moveTo(x, y);
+  oc.lineTo(x - size*Math.cos(angle-0.4), y - size*Math.sin(angle-0.4));
+  oc.lineTo(x - size*Math.cos(angle+0.4), y - size*Math.sin(angle+0.4));
+  oc.closePath();
+  oc.fill();
+}
+
+function drawNodeOnCtx(oc, n) {
+  const cfg = NODE_CFG[n.type];
+  const { w, h } = cfg;
+  oc.save();
+
+  if (cfg.shape === 'stadium') {
+    const r = h/2;
+    oc.beginPath();
+    oc.moveTo(n.x+r, n.y);
+    oc.lineTo(n.x+w-r, n.y);
+    oc.arc(n.x+w-r, n.y+h/2, r, -Math.PI/2, Math.PI/2);
+    oc.lineTo(n.x+r, n.y+h);
+    oc.arc(n.x+r, n.y+h/2, r, Math.PI/2, -Math.PI/2);
+    oc.closePath();
+    oc.fillStyle = cfg.bg; oc.fill();
+    oc.strokeStyle = cfg.border; oc.lineWidth = 2; oc.stroke();
+  } else if (cfg.shape === 'diamond') {
+    const cx = n.x+w/2, cy = n.y+h/2;
+    oc.beginPath();
+    oc.moveTo(cx, n.y); oc.lineTo(n.x+w, cy);
+    oc.lineTo(cx, n.y+h); oc.lineTo(n.x, cy);
+    oc.closePath();
+    oc.fillStyle = cfg.bg; oc.fill();
+    oc.strokeStyle = cfg.border; oc.lineWidth = 2; oc.stroke();
+    oc.font = 'bold 11px Exo 2,sans-serif';
+    oc.fillStyle = '#7bed9f'; oc.textAlign = 'left';
+    oc.fillText(n.yesLabel||'YES', n.x+w+5, cy+4);
+    oc.fillStyle = '#ff6b6b'; oc.textAlign = 'center';
+    oc.fillText(n.noLabel||'NO', cx, n.y+h+14);
+  } else if (cfg.shape === 'image') {
+    oc.beginPath();
+    oc.roundRect(n.x, n.y, w, h, 6);
+    oc.fillStyle = cfg.bg; oc.fill();
+    oc.strokeStyle = cfg.border; oc.lineWidth = 2; oc.stroke();
+    if (n._img) {
+      oc.drawImage(n._img, n.x+8, n.y+8, w-16, h-36);
+    }
+  } else {
+    oc.beginPath();
+    oc.roundRect(n.x, n.y, w, h, 6);
+    oc.fillStyle = cfg.bg; oc.fill();
+    oc.strokeStyle = cfg.border; oc.lineWidth = 2; oc.stroke();
+  }
+
+  // Label
+  const cx2 = n.x + w/2, cy2 = n.y + h/2;
+  oc.font = '600 13px Exo 2,sans-serif';
+  oc.fillStyle = cfg.textColor;
+  oc.textAlign = 'center';
+  oc.textBaseline = 'middle';
+  const txt = n.label || cfg.label;
+  const words = txt.split(' ');
+  const lines = [];
+  let line = '';
+  const maxW2 = w - 16;
+  words.forEach(word => {
+    const test = line ? line+' '+word : word;
+    if (oc.measureText(test).width > maxW2 && line) { lines.push(line); line = word; }
+    else line = test;
+  });
+  if (line) lines.push(line);
+  const lh = 16;
+  const sy = cy2 - (lines.length-1)*lh/2;
+  lines.forEach((l,i) => oc.fillText(l, cx2, sy+i*lh));
+
+  oc.restore();
+}
+
+// ════════════════════════════════════════════════════════
+//  EXPORT PNG
+// ════════════════════════════════════════════════════════
+function exportPNG() {
+  if (nodes.length === 0) { alert('No nodes to export.'); return; }
+  const padding = 40;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodes.forEach(n => {
+    const { w: pw, h: ph } = nodeDims(n);
+    minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x+pw); maxY = Math.max(maxY, n.y+ph);
+  });
+  const off = document.createElement('canvas');
+  off.width = maxX - minX + padding*2;
+  off.height = maxY - minY + padding*2;
+  const oc = off.getContext('2d');
+  oc.fillStyle = '#0a0e1a'; oc.fillRect(0,0,off.width,off.height);
+  oc.save();
+  oc.translate(-minX+padding, -minY+padding);
+  connections.forEach(conn => {
+    const src = nodes.find(n => n.id === conn.from);
+    const dst = nodes.find(n => n.id === conn.to);
+    if (!src||!dst) return;
+    const sp = getExitPoint(src, dst);
+    const ep = getEntryPoint(dst, src);
+    const dx = ep.x-sp.x, dy = ep.y-sp.y;
+    oc.strokeStyle='#00d4ff'; oc.lineWidth=2;
+    oc.beginPath(); oc.moveTo(sp.x,sp.y);
+    oc.bezierCurveTo(sp.x+dx*0.5,sp.y,ep.x-dx*0.5,ep.y,ep.x,ep.y);
+    oc.stroke();
+    drawArrowOnCtx(oc,ep.x,ep.y,ep.x-dx*0.5,ep.y,'#00d4ff');
+  });
+  nodes.forEach(n => drawNodeOnCtx(oc, n));
+  oc.restore();
+  const pngUrl = off.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = pngUrl; a.download = 'flowchart.png';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => document.body.removeChild(a), 100);
+}
+
+// ════════════════════════════════════════════════════════
+//  MISC
+// ════════════════════════════════════════════════════════
+function newDiagram() {
+  confirmAction('Clear all and start a new diagram?', () => {
+    nodes = []; connections = []; nextId = 1;
+    selectedNode = null; selectedConn = null;
+    panX = 0; panY = 0; zoomLevel = 1;
+    updateProps(); drawGrid(); render();
+  });
+}
+
+function clearAll() {
+  confirmAction('Clear all nodes and connections?', () => {
+    nodes = []; connections = [];
+    selectedNode = null; selectedConn = null;
+    updateProps(); render();
+  });
+}
+
+function confirmAction(text, cb) {
+  document.getElementById('confirm-text').textContent = text;
+  const btn = document.getElementById('confirm-ok-btn');
+  btn.onclick = () => { closeModal('confirm-modal'); cb(); };
+  showModal('confirm-modal');
+}
+
+function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+// ════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════
+resizeCanvases();
+</script>
+</body>
+</html>
